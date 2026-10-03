@@ -124,6 +124,12 @@ def age_h(path):
     return (time.time() - os.path.getmtime(path)) / 3600
 
 
+def claimed_h(path):
+    # rename keeps mtime (so mtime = when the task was sent) but updates ctime,
+    # so ctime is the closest thing to "when the agent claimed it"
+    return (time.time() - os.stat(path).st_ctime) / 3600
+
+
 def cmd_status(a):
     rows, alarms = [], 0
     for tid in ids_in("inbox", ".task.md"):
@@ -132,7 +138,7 @@ def cmd_status(a):
         alarms += bool(flag)
         rows.append(("queued", tid, f"{h:.1f}h", flag))
     for tid in ids_in("working", ".task.md"):
-        h = age_h(p("working", tid + ".task.md"))
+        h = claimed_h(p("working", tid + ".task.md"))
         flag = f"!! claimed {h:.1f}h ago, no result yet" if h > STALE_WORKING_H else ""
         alarms += bool(flag)
         rows.append(("in progress", tid, f"{h:.1f}h", flag))
