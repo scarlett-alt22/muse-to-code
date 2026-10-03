@@ -13,8 +13,9 @@ drive Claude Code with YOUR identity and YOUR permissions. The bridge
 forces `--permission-mode default` on the command line (so it beats
 whatever `defaultMode` is in your settings.json), but that flag only
 controls how operations OUTSIDE your rules are handled: the allow-rules
-in your own `permissions.allow` and any MCP servers you configured still
-auto-approve in `-p` mode. In other words, the effective permission is
+in your own `permissions.allow` still auto-approve in `-p` mode, including
+tools from any MCP servers you configured (those connect without a trust
+prompt). In other words, the effective permission is
 "your full whitelist", not "default mode". The bridge also sandboxes the
 working directory (see WORKSPACE / MUSE_TO_CODE_ALLOWED_ROOTS), but it is
 not a sandbox for untrusted task authors. Only let agents you trust write

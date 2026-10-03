@@ -19,11 +19,15 @@ agent  <-- <id>.result.md <-- outbox/ <-- done/<id>.task.md
 
 Whoever can write to `inbox/` can drive Claude Code **with your identity and
 your permissions**. The bridge forces `--permission-mode default` on the
-command line (so it beats whatever `defaultMode` is in your settings.json),
+command line (so it beats whatever `defaultMode` is in your settings.json;
+newer `claude --help` lists this mode as `manual`, and both values work),
 but that flag only controls how operations *outside* your rules are handled:
-the allow-rules in your own `permissions.allow` and any MCP servers you
-configured still auto-approve in `-p` mode. In other words, the effective
-permission is "your full whitelist", not "default mode". The bridge also
+the allow-rules in your own `permissions.allow` still auto-approve in `-p`
+mode, and MCP servers in your configs (including a project's `.mcp.json`)
+are connected without a trust or per-server approval prompt, so any MCP
+tool your allow-rules cover runs too. Anything that would need a prompt is
+denied. In other words, the effective permission is "your full whitelist",
+not "default mode". The bridge also
 sandboxes the working directory (tasks run in `workspace/` unless you
 whitelist more via `MUSE_TO_CODE_ALLOWED_ROOTS`), but it is not a sandbox
 for untrusted task authors. Only let agents you trust write to `inbox/`.
@@ -100,14 +104,53 @@ export MUSE_TO_CODE_ALLOWED_ROOTS="$HOME/projects:$HOME/notes"
 - `claude -p` always runs with `--permission-mode default`, hardcoded in
   argv (a command-line flag beats whatever is in `settings.json`). Note:
   this only governs operations *outside* your rules — your own
-  `permissions.allow` entries and configured MCP servers still auto-approve
-  (see Threat model above). The bridge **never** passes
+  `permissions.allow` entries still auto-approve, including any MCP tools
+  they cover (see Threat model above). The bridge **never** passes
   `--dangerously-skip-permissions` or any permission-bypass flag.
 - Prompts go via stdin with `shell=False`: no shell interpolation, ever.
 - Symlinks in `inbox/` are rejected, not followed.
 - Tasks are claimed into `processing/` before execution, so a crash or a
   failed result-write can never re-run a task (and its side effects).
 - One task at a time, 10-minute timeout per task, every invocation logged.
+
+## Reverse direction: code-to-muse
+
+[`code-to-muse/`](code-to-muse/) is the other half: Claude Code hands tasks
+**to** the agent. There is no daemon on this side. Claude Code queues a task
+file; the agent, on its own schedule, claims it, does it, and writes a
+result back.
+
+```
+claude code -- c2m.py send -->  inbox/  -- rename -->  working/  (agent claims)
+claude code <-- c2m.py status -- outbox/<id>.result.md + done/<id>.task.md
+```
+
+- **`code-to-muse/bin/c2m.py`** (stdlib only) — `send --title T < body.md`
+  queues a task; `status` shows where every task is and exits 1 if anything
+  is stuck (unclaimed > 3 h, claimed > 6 h with no result) or malformed
+  (bad front matter, wrong id, invalid status, missing or empty `Evidence`,
+  a task in `done/` with no result, a result with no task); `show <id>`;
+  `reviewed <id>` archives after checking. The root folder is the parent of
+  `bin/` unless `C2M_ROOT` is set.
+- **`code-to-muse/AGENT.md`** — instructions to give the agent: the claim /
+  write / move protocol, the result format, and the rules. Fill in its
+  "Your red lines" section before handing it over.
+
+**`status` checks form, not truth.** A well-formed result is still only the
+agent's claim; the reviewer has to check the actual output. That is why the
+result format requires verbatim evidence.
+
+Threat model for this direction:
+
+- **Task text leaves your machine.** A hosted agent (Muse runs in the vendor's
+  cloud and reaches the Mac through its device bridge) reads the task and any
+  files it opens on the provider's servers. Put only what the task needs in it.
+- **The agent's reach is whatever you granted it**, which can be much wider
+  than this folder (mail, messages, screen, input control). The rules in
+  `AGENT.md` are instructions, not enforcement.
+- Anything that can write to `inbox/` can queue work for the agent. Tasks
+  carry `from: claude-code` and the agent is told to refuse anything else,
+  but that is a convention, not authentication.
 
 ## Uninstall
 
@@ -118,14 +161,11 @@ rm ~/Library/LaunchAgents/muse-to-code.plist
 
 ## Ideas not built (yet)
 
-- Reverse direction: Claude Code → agent (`code-to-muse/inbox/`, agent polls
-  via cron — needs its own authorization story).
 - `--restricted --strict-mcp-config` mode: ignore the user/project/local
   settings layers, drop code-execution tools, confine file access to the
   working directory, and hold back MCP servers. Stronger isolation, but
   Claude can no longer run tests or builds.
-- Task dedup / priorities; `--output-format json` (newer `claude` only,
-  skipped for compatibility).
+- Task dedup / priorities; `--output-format json` for structured results.
 
 ## License
 
