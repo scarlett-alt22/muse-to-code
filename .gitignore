@@ -1,0 +1,10 @@
+# runtime junk, never commit
+*.log
+inbox/
+outbox/
+done/
+rejected/
+processing/
+workspace/
+__pycache__/
+.DS_Store
