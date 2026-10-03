@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>io.github.muse-to-code</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/YOUR_NAME/muse-to-code/bridge.py</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Working dir for inbox/outbox/done/bridge.log. Change to taste.
+             Must be an absolute path: launchd does not expand ~ or $HOME.
+             Create it first: mkdir -p /Users/YOUR_NAME/muse-to-code/work -->
+        <key>MUSE_TO_CODE_DIR</key>
+        <string>/Users/YOUR_NAME/muse-to-code/work</string>
+        <!-- Make sure launchd finds the claude CLI -->
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/YOUR_NAME/muse-to-code/work/bridge.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/YOUR_NAME/muse-to-code/work/bridge.stderr.log</string>
+</dict>
+</plist>
